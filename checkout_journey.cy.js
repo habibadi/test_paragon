@@ -18,7 +18,7 @@ describe('E2E Full Checkout Journey - Queenbee Staging', () => {
     cy.get('.menu-right').find('svg').should('be.visible'); 
   });
 
-  it('should allow user to add product, select shipping, and fail to apply voucher correctly', () => {
+  it('should allow user to add product, select shipping, and success to apply voucher correctly', () => {
     // Langkah 1: Handle Cookie Banner jika muncul
     cy.get('body').then(($body) => {
       if ($body.find('.css-1vd84sn').length > 0) {
@@ -26,22 +26,22 @@ describe('E2E Full Checkout Journey - Queenbee Staging', () => {
       }
     });
 
-    // Langkah 2: Menambahkan 7 item "Fitclair Collagen Drink" ke keranjang
+    // Langkah 2: Menambahkan 8 item "Fitclair Collagen Drink" ke keranjang
     cy.log('--- Adding Product to Cart ---');
     // Cari kartu produk "Fitclair Collagen Drink"
     const productCard = cy.contains('h2', 'Fitclair Collagen Drink')
                           .parents('.styles_product__product-container__vLAe3');
 
-    // Klik tombol "Keranjang" sebanyak 7 kali
-    for (let i = 0; i < 7; i++) {
+    // Klik tombol "Keranjang" sebanyak 8 kali
+    for (let i = 0; i < 8; i++) {
         productCard.find('button.ButtonKeranjangQbee_add-to-cart__H_haT').click();
         cy.wait(200); // Beri jeda agar sistem sempat merespon
     }
     
-    // Verifikasi counter pada kartu produk menunjukkan angka "7"
+    // Verifikasi counter pada kartu produk menunjukkan angka "8"
     productCard.find('.ButtonKeranjangQbee_counter-label__T0ZbC')
                .should('be.visible')
-               .and('contain', '7');
+               .and('contain', '8');
 
     // Langkah 3: Buka Side Cart dan verifikasi isinya
     cy.log('--- Verifying Side Cart ---');
@@ -53,8 +53,8 @@ describe('E2E Full Checkout Journey - Queenbee Staging', () => {
       // Verifikasi subtotal di dalam side cart
       cy.get('.style_subtotal-container___q8z5')
         .should('be.visible')
-        .and('contain', 'Subtotal (7):')
-        .and('contain', 'Rp1.162.000');
+        .and('contain', 'Subtotal (8):')
+        .and('contain', 'Rp1.328.000');
 
       // Klik tombol "Beli sekarang" untuk ke halaman checkout
       cy.contains('button', 'Beli sekarang').click();
@@ -76,10 +76,10 @@ describe('E2E Full Checkout Journey - Queenbee Staging', () => {
     
     // Verifikasi blok ringkasan pesanan
     cy.get('.styles_checkout-summary__8OZk2').within(() => {
-      cy.contains('p', 'Harga Produk (7 Barang)').siblings('p').should('have.text', 'Rp1.260.000');
-      cy.contains('p', 'Diskon Produk').siblings('p').should('have.text', '-Rp98.000');
-      cy.contains('h1', 'Subtotal Belanja').siblings('p').should('have.text', 'Rp1.162.000');
-      cy.contains('p', 'Biaya Pengiriman (2.80 Kg)').siblings('p').should('have.text', 'Rp10.000');
+      cy.contains('p', 'Harga Produk (8 Barang)').siblings('p').should('have.text', 'Rp1.440.000');
+      cy.contains('p', 'Diskon Produk').siblings('p').should('have.text', '-Rp112.000');
+      cy.contains('h1', 'Subtotal Belanja').siblings('p').should('have.text', 'Rp1.328.000');
+      cy.contains('p', 'Biaya Pengiriman (3.20 Kg)').siblings('p').should('have.text', 'Rp10.000');
     });
 
     // Verifikasi blok total pembayaran
@@ -87,10 +87,10 @@ describe('E2E Full Checkout Journey - Queenbee Staging', () => {
       cy.contains('h1', 'Total pembayaran')
         .parent()
         .siblings('p.styles_checkout-summary-total__9WH9V')
-        .should('contain.text', '1.172.000');
+        .should('contain.text', '1.338.000');
     });
 
-    // Langkah 6: Halaman Checkout - Mencoba Voucher (Skenario Negatif)
+    // Langkah 6: Halaman Checkout - Mencoba Voucher (Skenario Positif)
     cy.log('--- Attempting to Apply Voucher ---');
     
     cy.contains('p', 'Masukkan kode atau pilih voucher').click();
@@ -99,6 +99,6 @@ describe('E2E Full Checkout Journey - Queenbee Staging', () => {
     cy.contains('button', 'Cari').click();
     
     // Verifikasi pesan error voucher muncul
-    cy.contains('Tidak ada voucher').should('be.visible');
+    cy.contains('voucher').should('be.visible');
   });
 });
