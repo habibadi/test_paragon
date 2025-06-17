@@ -1,93 +1,104 @@
-// cypress/e2e/checkout_journey.cy.js
+describe('E2E Full Checkout Journey - Queenbee Staging', () => {
 
-describe('E2E Checkout Journey - Queenbee Staging', () => {
-
-  // Blok ini akan dijalankan sebelum setiap tes
+  // Blok ini akan dijalankan sebelum tes utama untuk login
   beforeEach(() => {
-    // Mengunjungi halaman login
     cy.visit('/login');
 
-    // 1. Klik tab "Email" terlebih dahulu
-    // Asumsi selector untuk tab email, perlu disesuaikan jika berbeda
+    // Klik tab "Email"
     cy.get('#page-login__tabs-tab-email').click(); 
-    
-    // 2. Mengisi form login menggunakan ID selector yang lebih spesifik
-    cy.get('#page-login__tabs-email__input-email').type(Cypress.env('user_email')); // Asumsi ID untuk input email
+
+    // Mengisi form login menggunakan ID selector yang spesifik
+    cy.get('#page-login__tabs-email__input-email').type(Cypress.env('user_email'));
     cy.get('#page-login__tabs-email__input-password').type(Cypress.env('user_password'));
     cy.get('#page-login__button-login').click();
-    
-    // Verifikasi login berhasil
+
+    // Verifikasi bahwa login berhasil
     cy.url().should('not.include', '/login');
-    cy.contains('habib').should('be.visible');
+    // Verifikasi dengan cara yang lebih stabil daripada hardcode nama 'habib'
+    cy.get('.menu-right').find('svg').should('be.visible'); 
   });
 
-  it('Scenario 1: Fails to apply voucher when required product is not in cart (Negative Test)', () => {
-    // Menutup modal promosi jika muncul di halaman utama
-    // Menggunakan .then() untuk menangani elemen yang mungkin tidak selalu ada
+  it('should allow user to add product, select shipping, and fail to apply voucher correctly', () => {
+    // Langkah 1: Handle Cookie Banner jika muncul
     cy.get('body').then(($body) => {
-      if ($body.find('div[role="dialog"]').length > 0) {
-        cy.get('button[aria-label="Close"]').click({ force: true });
+      if ($body.find('.css-1vd84sn').length > 0) {
+        cy.contains('button', 'Izinkan semua cookies').click();
       }
     });
 
-    // Menemukan produk "Fitclair Collagen Drink" dan menambahkannya ke keranjang
-    // Selector ini mencari elemen yang berisi teks produk, lalu mencari tombol tambah di dalamnya
-    cy.contains('h3', 'Fitclair Collagen Drink').parents('.product-card').find('button').contains('Keranjang').click();
-    
-    // Buka side cart untuk menambah kuantitas barang
-    // Asumsi ada ikon keranjang dengan selector ini
-    cy.get('.cart-icon-selector').click(); 
+    // Langkah 2: Menambahkan 7 item "Fitclair Collagen Drink" ke keranjang
+    cy.log('--- Adding Product to Cart ---');
+    // Cari kartu produk "Fitclair Collagen Drink"
+    const productCard = cy.contains('h2', 'Fitclair Collagen Drink')
+                          .parents('.styles_product__product-container__vLAe3');
 
-    // Menambah kuantitas produk menjadi 8
-    // Mengklik tombol '+' sebanyak 7 kali
-    cy.get('.product-in-cart-selector').within(() => {
-      for (let i = 0; i < 7; i++) {
-        cy.get('.quantity-plus-button').click();
-      }
-      // Verifikasi kuantitas sudah 8
-      cy.get('input.quantity-input').should('have.value', '8');
+    // Klik tombol "Keranjang" sebanyak 7 kali
+    for (let i = 0; i < 7; i++) {
+        productCard.find('button.ButtonKeranjangQbee_add-to-cart__H_haT').click();
+        cy.wait(200); // Beri jeda agar sistem sempat merespon
+    }
+    
+    // Verifikasi counter pada kartu produk menunjukkan angka "7"
+    productCard.find('.ButtonKeranjangQbee_counter-label__T0ZbC')
+               .should('be.visible')
+               .and('contain', '7');
+
+    // Langkah 3: Buka Side Cart dan verifikasi isinya
+    cy.log('--- Verifying Side Cart ---');
+    cy.get('.HeaderQbee_total-cart__Acy0A').click();
+
+    // Gunakan .within() untuk membatasi pencarian di dalam side cart
+    // Ganti '.side-cart-selector' dengan class/id container side cart yang sebenarnya
+    cy.get('.side-cart-selector').within(() => {
+      // Verifikasi subtotal di dalam side cart
+      cy.get('.style_subtotal-container___q8z5')
+        .should('be.visible')
+        .and('contain', 'Subtotal (7):')
+        .and('contain', 'Rp1.162.000');
+
+      // Klik tombol "Beli sekarang" untuk ke halaman checkout
+      cy.contains('button', 'Beli sekarang').click();
     });
 
-    // Verifikasi subtotal di dalam cart
-    cy.contains('Subtotal').siblings('span').should('contain', 'Rp1.328.000');
-    
-    // Klik tombol untuk melanjutkan ke checkout
-    cy.contains('button', 'Beli sekarang').click();
-
-    // Verifikasi sudah berada di halaman checkout
+    // Langkah 4: Halaman Checkout - Pilih Pengiriman
+    cy.log('--- Selecting Shipping on Checkout Page ---');
     cy.url().should('include', '/checkout/shipping');
-    cy.contains('h1', 'Cek pesanan').should('be.visible');
 
-    // Memilih jasa pengiriman
     cy.contains('Pilih Layanan Pengiriman').click();
-    // Memilih JNE berdasarkan screenshot (ini mungkin memerlukan selector yang lebih spesifik)
-    cy.contains('.courier-option', 'JNE').click();
+    cy.wait(500);
+    cy.contains('Regular').click();
+    cy.wait(500);
+    // Cari kurir 'jnt' (case-insensitive) dan klik
+    cy.contains('.css-70qvj9', /jnt/i).click();
 
-    // Verifikasi total pembayaran sudah termasuk ongkir (Rp1.328.000 + Rp57.000)
-    cy.contains('Total pembayaran').parent().find('p.final-price').should('contain', 'Rp 1.385.000');
+    // Langkah 5: Halaman Checkout - Verifikasi Ringkasan dan Total Biaya
+    cy.log('--- Verifying Order Summary and Total ---');
+    
+    // Verifikasi blok ringkasan pesanan
+    cy.get('.styles_checkout-summary__8OZk2').within(() => {
+      cy.contains('p', 'Harga Produk (7 Barang)').siblings('p').should('have.text', 'Rp1.260.000');
+      cy.contains('p', 'Diskon Produk').siblings('p').should('have.text', '-Rp98.000');
+      cy.contains('h1', 'Subtotal Belanja').siblings('p').should('have.text', 'Rp1.162.000');
+      cy.contains('p', 'Biaya Pengiriman (2.80 Kg)').siblings('p').should('have.text', 'Rp10.000');
+    });
 
-    // Mencoba memasukkan voucher yang tidak valid untuk keranjang ini
-    cy.contains('Masukkkan kode atau pilih voucher').click();
+    // Verifikasi blok total pembayaran
+    cy.get('.styles_checkout-total__4YPYF').within(() => {
+      cy.contains('h1', 'Total pembayaran')
+        .parent()
+        .siblings('p.styles_checkout-summary-total__9WH9V')
+        .should('contain.text', '1.172.000');
+    });
+
+    // Langkah 6: Halaman Checkout - Mencoba Voucher (Skenario Negatif)
+    cy.log('--- Attempting to Apply Voucher ---');
+    
+    cy.contains('p', 'Masukkan kode atau pilih voucher').click();
+    cy.wait(500);
     cy.get('input[placeholder="Masukkan kode promo"]').type('QRP-TEST-123');
     cy.contains('button', 'Cari').click();
-
-    // Verifikasi bahwa pesan error yang benar (sesuai screenshot) muncul
+    
+    // Verifikasi pesan error voucher muncul
     cy.contains('Tidak ada voucher').should('be.visible');
   });
-
-  // Tes ini diskip, tapi ini adalah contoh untuk skenario positif
-  it.skip('Scenario 2: Successfully applies voucher when all conditions are met (Positive Test)', () => {
-    // 1. Tambahkan produk "Louissen drink" ke keranjang
-    // cy.contains('h3', 'Louissen drink')...
-    
-    // 2. Pastikan total belanja > Rp1.250.000
-
-    // 3. Lanjutkan ke Checkout dan pilih pengiriman
-
-    // 4. Masukkan kode voucher 'QRP-TEST-123'
-    
-    // 5. Verifikasi bahwa voucher berhasil diterapkan (misal, biaya pengiriman menjadi Rp0)
-    // cy.contains('Biaya Pengiriman').siblings('p').should('contain', 'Rp0');
-  });
-
 });
