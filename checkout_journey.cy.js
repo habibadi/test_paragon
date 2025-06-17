@@ -7,12 +7,16 @@ describe('E2E Checkout Journey - Queenbee Staging', () => {
     // Mengunjungi halaman login
     cy.visit('/login');
 
-    // Melakukan proses login menggunakan kredensial dari cypress.env.json
-    cy.get('input[type="email"]').type(Cypress.env('user_email'));
-    cy.get('input[type="password"]').type(Cypress.env('user_password'));
-    cy.get('button[type="submit"]').contains('Masuk').click();
-
-    // Verifikasi bahwa login berhasil dan nama user muncul
+    // 1. Klik tab "Email" terlebih dahulu
+    // Asumsi selector untuk tab email, perlu disesuaikan jika berbeda
+    cy.get('#page-login__tabs-tab-email').click(); 
+    
+    // 2. Mengisi form login menggunakan ID selector yang lebih spesifik
+    cy.get('#page-login__tabs-email__input-email').type(Cypress.env('user_email')); // Asumsi ID untuk input email
+    cy.get('#page-login__tabs-email__input-password').type(Cypress.env('user_password'));
+    cy.get('#page-login__button-login').click();
+    
+    // Verifikasi login berhasil
     cy.url().should('not.include', '/login');
     cy.contains('habib').should('be.visible');
   });
